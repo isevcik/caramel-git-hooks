@@ -1,0 +1,46 @@
+#!/bin/sh
+
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -e "\.pm$" -e "\.pl$")
+if [ "$files" = "" ]; then 
+	exit 0 
+fi  
+
+pass=true
+#perl -Mlib=/var/www/caramel/perl5lib/lib/i486-linux-gnu-thread-multi,/var/www/caramel/perl5lib/lib,/var/www/caramel/perl5lib,/var/www/caramel/lib,/var/www/caramel/apps,/var/www/caramel/dev/perl5lib/lib,/var/www/caramel/dev/perl5lib,/var/www/caramel/dev/lib,/var/www/caramel/dev/apps apps/CashOnDelivery/Application.pm
+
+echo "\nValidating Perl Syntax:\n"
+
+# Perl compilation is done on virtual machine to ensure exact environment
+ssh_host="ivan@debian"
+ssh_root="/var/www/caramel"
+
+lib="$ssh_root/perl5lib/lib/i486-linux-gnu-thread-multi,
+$ssh_root/perl5lib/lib,
+$ssh_root/perl5lib,
+$ssh_root/lib,
+$ssh_root/apps"
+
+lib=$(echo "$lib" | tr -d '\n')
+
+for file in ${files}
+do
+	result=$(ssh "$ssh_host" "perl -c -Mlib=$lib $ssh_root/${file} 2>&1")
+
+	ok=$(echo "$result" | grep "syntax OK")
+	if [ "$ok" != "" ]; then
+		echo "\t\033[32mPerl Syntax Passed: ${file}\033[0m"
+	else
+		echo "\t\033[31mPerl Syntax Failed: ${file}\033[0m"
+		echo "$result"
+		pass=false
+	fi
+done
+
+echo "\nPerl validation complete\n"
+
+if ! $pass; then
+	echo "\033[41mCOMMIT FAILED:\033[0m Your commit contains files that should pass Perl Syntax but do not. Please fix the Perl Syntax errors and try again.\n"
+	exit 1
+else
+	echo "\033[42mCOMMIT SUCCEEDED\033[0m\n"
+fi

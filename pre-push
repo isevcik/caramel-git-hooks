@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for f in .git/hooks/pre-push.d/*; do
+    if [ -x "$f" ]; then
+        if ! "$f"; then
+            echo "\033[31mDID NOT PUSH YOUR CHANGES!\033[0m";
+            exit 1
+        fi
+    fi
+done
